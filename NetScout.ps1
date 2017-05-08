@@ -57,8 +57,7 @@ Write-Host "Espaço Total em Disco"$dskobj.deviceid":" $max2 "GB"
 Write-Host "Espaço Ocupado em Disco"$dskobj.deviceid":" $full2 "GB"
 Write-Host "Espaço Livre em Disco"$dskobj.deviceid":" $free2 "GB"
 Write-Host "Recovered Space"$dif "GB"
-$cnt++
-catch [System.Management.Automation.ItemNotFoundException] {} }
+$cnt++}
 } 
  } #end of disk info
 #end disk cleaning script
