@@ -42,7 +42,8 @@ Purpose/Change: Network Scouting and Remote Disk Cleaning
 #>  
 
 function RDiskCleanCmd #disk cleaning script
-{ cmd.exe /c "C:\Windows\System32\CleanPC.cmd"
+{ #remote call of the cleaning script
+Invoke-Command -ComputerName $pcname -ScriptBlock {Invoke-Expression -Command:"cmd.exe /c 'C:\Windows\System32\CleanPC.cmd'"} 
 #second scan of disks and compatrison with the first
 $diskscan = Get-WmiObject Win32_logicaldisk -ComputerName $pcname
 $cnt = 0
