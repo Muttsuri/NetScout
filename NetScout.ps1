@@ -1,4 +1,4 @@
-﻿<#   
+<#   
 .SYNOPSIS   
 <Estre script foi criado para encontrar o IPV4, Marca, Modelo , RAM, CPU, Numero de Serie, Utilizador Corrente e Estatísticas de Disco, de uma maquina através do seu nome. 
 Também limpará o disco de ficheiros de lixo caso o utilizador o considere necessário e apresentará o espaço recuperado.>  
@@ -43,15 +43,15 @@ Purpose/Change: Network Scouting and Remote Disk Cleaning
 
 function RDiskCleanCmd #disk cleaning script
 { #remote call of the cleaning script
-Invoke-Command -ComputerName $pcname -ScriptBlock {Invoke-Expression -Command:"cmd.exe /c 'C:\Windows\System32\CleanPC.cmd'"} 
+psexec \\$pcname C:\Windows\System32\CleanPC.cmd
 #second scan of disks and compatrison with the first
 $diskscan = Get-WmiObject Win32_logicaldisk -ComputerName $pcname
 $cnt = 0
 foreach ($dskobj in $diskscan) {
 if ($dskobj.VolumeName -eq $null ) {}
 else {Write-Host $dskobj.deviceid
-$max2 = [math]::round($dskobj.Size/1024/1024/1024, 0)
-$free2 = [math]::round($dskobj.FreeSpace/1024/1024/1024, 0)
+$max2 = [math]::round($dskobj.Size/1024/1024/1024, 3)
+$free2 = [math]::round($dskobj.FreeSpace/1024/1024/1024, 3)
 $full2 = $max2 - $free2
 $dif = $free2 - $recArray[$cnt]
 Write-Host "Espaço Total em Disco"$dskobj.deviceid":" $max2 "GB"
@@ -99,8 +99,8 @@ $recArray = [System.Collections.ArrayList]@() #array para onde salvar $free para
 foreach ($dskitem in $diskspace) {
 if ($dskitem.VolumeName -eq $null ) {}
 else {Write-Host $dskitem.deviceid
-$max = [math]::round($dskitem.Size/1024/1024/1024, 0)      
-$free = [math]::round($dskitem.FreeSpace/1024/1024/1024, 0)
+$max = [math]::round($dskitem.Size/1024/1024/1024, 3)      
+$free = [math]::round($dskitem.FreeSpace/1024/1024/1024, 3)
 $recArray.Add($free)
 $full = $max - $free    
 Write-Host "Espaço Total em Disco"$dskitem.deviceid":" $max "GB"
