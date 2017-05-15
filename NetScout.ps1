@@ -1,4 +1,4 @@
-﻿<#   
+<#   
 .SYNOPSIS   
 <Estre script foi criado para encontrar o IPV4, Marca, Modelo , RAM, CPU, Numero de Serie, Utilizador Corrente e Estatísticas de Disco, de uma maquina através do seu nome. 
 Também limpará o disco de ficheiros de lixo caso o utilizador o considere necessário e apresentará o espaço recuperado.>  
@@ -108,7 +108,7 @@ Write-Host "Espaço Ocupado em Disco"$dskitem.deviceid":" $full "GB"
 Write-Host "Espaço Livre em Disco"$dskitem.deviceid":" $free "GB"
 Write-Host }} 
 
-$yn = Read-Host -Prompt "Deseja Fazer a limpeza remota de disco (S/N or Y/N)"  #Prompt de limpeza
+#$yn = Read-Host -Prompt "Deseja Fazer a limpeza remota de disco (S/N or Y/N)"  #Prompt de limpeza
 if ($yn -ne $null -Or "n") {
 switch ($yn) {
 "y"{RDiskCleanCmd}
