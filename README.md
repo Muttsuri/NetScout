@@ -25,7 +25,7 @@ Set-ExecutionPolicy Restricted
 ```
 
 ### To be done
-* Convert _CleanPC.cmd_ to Powershell or introduce it into the script itself(depends on _CleanPC.cmd_'s author Nuno Almeida.
+* Convert _CleanPC.cmd_ to Powershell or introduce it into the script itself(depends on _CleanPC.cmd_'s author Nuno Almeida).
 * Have the script not only ping for the computer but have it check if the computer active in the Active Directory (If possible)
 
 ##### Dreams
