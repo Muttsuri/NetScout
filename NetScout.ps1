@@ -55,10 +55,10 @@ $free2 = [math]::round($dskobj.FreeSpace/1024/1024/1024, 1)
 $full2 = $max2 - $free2
 $free2MB = [math]::round($free2*1024, 1)
 $dif = $free2MB - $recArray[$cnt]
-Write-Host "Espaço Total em Disco"$dskobj.deviceid":" $max2 "GB"
-Write-Host "Espaço Ocupado em Disco"$dskobj.deviceid":" " " $full2 "GB"
-Write-Host "Espaço Livre em Disco"$dskobj.deviceid":" $free2 "GB"
-Write-Host "Recovered Space"$dif "MB"
+Write-Host "Espaço Total em Disco"$dskobj.deviceid":" "{0:N2}" -f $max2 "GB"
+Write-Host "Espaço Ocupado em Disco"$dskobj.deviceid":" "{0:N2}" -f $full2 "GB"
+Write-Host "Espaço Livre em Disco"$dskobj.deviceid":" "{0:N2}" -f $free2 "GB"
+Write-Host "Recovered Space" $dif "MB"
 $cnt++}
 } 
  } #end of disk info
@@ -105,9 +105,9 @@ $free = [math]::round($dskitem.FreeSpace/1024/1024/1024, 1)
 $freeMB = [math]::round($free*1024, 1)
 $recArray.Add($freeMB)
 $full = $max - $free    
-Write-Host "Espaço Total em Disco"$dskitem.deviceid":" $max "GB"
-Write-Host "Espaço Ocupado em Disco"$dskitem.deviceid":" $full "GB"
-Write-Host "Espaço Livre em Disco"$dskitem.deviceid":" $free "GB"
+Write-Host "Espaço Total em Disco"$dskitem.deviceid":" "{0:N2}" -f$max "GB"
+Write-Host "Espaço Ocupado em Disco"$dskitem.deviceid":" "{0:N2}" -f$full "GB"
+Write-Host "Espaço Livre em Disco"$dskitem.deviceid":" "{0:N2}" -f$free "GB"
 Write-Host }} 
 
 $yn = Read-Host -Prompt "Deseja Fazer a limpeza remota de disco (S/N or Y/N)"  #Prompt de limpeza
