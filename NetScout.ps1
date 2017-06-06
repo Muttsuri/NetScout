@@ -43,7 +43,7 @@ Purpose/Change: Network Scouting and Remote Disk Cleaning
 
 function RDiskCleanCmd #disk cleaning script
 { #remote call of the cleaning script
-#psexec \\$pcname "C:\Windows\System32\CleanPC.cmd"
+psexec \\$pcname "C:\Windows\System32\CleanPC.cmd"
 #second scan of disks and compatrison with the first
 $diskscan = Get-WmiObject Win32_logicaldisk -ComputerName $pcname
 $cnt = 0
@@ -66,7 +66,6 @@ $cnt++}
 #Codigo central ao script
 While (!$pcname){      
 $pcname = Read-Host -Prompt "Insira o nome do pc para obter informção"}   
-   
 $contest = Test-Connection -ComputerName $pcname -count 1 -Quiet #Teste para saber se o pc está ligado
 if ($contest -eq 1 ) {   
 $iv4 = Test-Connection -ComputerName $pcname -count 1 -ErrorAction Stop| select-object IPV4Address #Recolha do IPv4 de $pcname
