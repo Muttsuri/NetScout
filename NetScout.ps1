@@ -4,18 +4,18 @@
 Também limpará o disco de ficheiros de lixo caso o utilizador o considere necessário e apresentará o espaço recuperado.>  
 .DESCRIPTION 
 <O Script através do nome da maquina irá pingar a maquina e depois irá recolher a informação da maquina e depois apresenta-a. A informação que este Script dará é:  
-O nome do utilizador ligado na altura da verificação.  
-O Nome do Fabricante.  
-O Modelo da Maquina.  
-O IPV4.
-O Nome do CPU.
-O Nome do Sistema Operativo.
-O Numero de Serie.
-O Utilizador Currente.
-O Tamanho dos discos C e D.
-O Espaço Ocupado dos discos C e D.
-O Espaço Livre dos discos C e D.
-Após isso ele dará ao utilizador a escolha de correr uma função de limpeza baseada num script por Nuno Almeida.
+   O nome do utilizador ligado na altura da verificação.  
+   O Nome do Fabricante.  
+   O Modelo da Maquina.  
+   O IPV4.
+   O Nome do CPU.
+   O Nome do Sistema Operativo.
+   O Numero de Serie.
+   O Utilizador Currente.
+   O Tamanho dos discos C e D.
+   O Espaço Ocupado dos discos C e D.
+   O Espaço Livre dos discos C e D.
+   Após isso ele dará ao utilizador a escolha de correr uma função de limpeza baseada num script por Nuno Almeida.
 E apresentará o espaço Recupeado pelo script de limpeza.>  
 .PARAMATER
 <Nome do PC>  
@@ -35,38 +35,62 @@ E apresentará o espaço Recupeado pelo script de limpeza.>
    Espaço Ocupado e Livre de C e D
    Espaço Recuperado após a limpeza caso esta seja escolhida>  
 .NOTES 
-Version: 4  
+Version: 5  
 Author: <João Aelxandre Garica Correia>  
 Creation Date: <07/05/2017>  
 Purpose/Change: Network Scouting and Remote Disk Cleaning 
 #>  
 
-function RDiskCleanCmd #disk cleaning script
+########################################################
+# Header Functions
+########################################################
+#Scans disk
+#Rquires an empty array ( $recArray = [System.Collections.ArrayList]@() ) to be declared out of the function scope
+#A read or write option "w" = Write && "r" = Read
+#Requires pcname pasthrough
+function RDiskScan([System.Collections.ArrayList] $array, [String] $rw, [String] $name)
+{
+    $diskscan = Get-WmiObject Win32_logicaldisk -ComputerName $name
+    $cnt = 0
+        foreach ($diskobj in $diskscan)
+        {
+            if($diskobj.VolumeName -ne $null ) 
+            {
+                Write-Host $diskobj.deviceid
+                $max2 = $diskobj.Size/1024/1024/1024
+                $free2 = $diskobj.FreeSpace/1024/1024/1024
+                $full2 = $max2 - $free2
+                if ($rw -eq "w")
+                {
+                    $array.Add($diskobj.FreeSpace)
+                }
+                else
+                {
+                    $dif = $diskobj.FreeSpace - $array[$cnt]
+                }
+                Write-Host "Espaço Total em Disco"$diskobj.deviceid":" ([math]::Round($max2, 2)) "GB"
+                Write-Host "Espaço Ocupado em Disco"$diskobj.deviceid":" ([math]::Round($full2, 2)) "GB"
+                Write-Host "Espaço Livre em Disco"$diskobj.deviceid":" ([math]::Round($free2, 2)) "GB"
+                if ($rw -eq "r")
+                {
+                    Write-Host "Recovered Space" ([math]::round($dif/1024/1024, 3)) "MB"
+                    $cnt++
+                }
+            }
+        }
+}
+
+#disk cleaning script
+#Calls psexec and RDiskScan
+function RDiskClean 
 {  
    #remote call of the cleaning script
    psexec \\$pcname "C:\Windows\System32\CleanPC.cmd"
-   #second scan of disks and compatrison with the first
-   $diskscan = Get-WmiObject Win32_logicaldisk -ComputerName $pcname
-   $cnt = 0
-   foreach ($dskobj in $diskscan) 
-   {
-      if ($dskobj.VolumeName -eq $null ) {}
-      else 
-      {
-         Write-Host $dskobj.deviceid
-         $max2 = $dskobj.Size/1024/1024/1024
-         $free2 = $dskobj.FreeSpace/1024/1024/1024
-         $full2 = $max2 - $free2
-         $dif = $dskobj.FreeSpace - $recArray[$cnt]
-         Write-Host "Espaço Total em Disco"$dskobj.deviceid":" ([math]::Round($max2, 2)) "GB"
-         Write-Host "Espaço Ocupado em Disco"$dskobj.deviceid":" ([math]::Round($full2, 2)) "GB"
-         Write-Host "Espaço Livre em Disco"$dskobj.deviceid":" ([math]::Round($free2, 2)) "GB"
-         Write-Host "Recovered Space" ([math]::round($dif/1024/1024, 3)) "MB"
-         $cnt++
-      }
-   } 
+   RDiskScan $recArray "r" $pcname
 }
-#end disk cleaning script
+########################################################
+# Header Functions End
+########################################################
 
 #Codigo central ao script
 While (!$pcname) #se não tiver inserido nome
@@ -106,36 +130,19 @@ if ($contest -eq 1 ) #se estiver ligado executa o script em si
          Write-Host
          $diskspace = Get-WmiObject Win32_logicaldisk -ComputerName $pcname #Recolha de informação de disco
          $recArray = [System.Collections.ArrayList]@() #array para onde salvar $free para poder ser comparado mais tarde
-         
-         #Inicio display de dados de disco
-         foreach ($dskitem in $diskspace) 
-         {
-            if ($dskitem.VolumeName -eq $null ) {}
-            else {
-                    Write-Host $dskitem.deviceid
-                     $max = $dskitem.Size/1024/1024/1024   
-                     $free = $dskitem.FreeSpace/1024/1024/1024
-                     $pass = $dskitem.FreeSpace
-                     $recArray.Add($pass)
-                     $full = $max - $free    
-                     Write-Host "Espaço Total em Disco"$dskitem.deviceid":" ([math]::Round($max, 2))"GB"
-                     Write-Host "Espaço Ocupado em Disco"$dskitem.deviceid":" ([math]::Round($full, 2))"GB"
-                     Write-Host "Espaço Livre em Disco"$dskitem.deviceid":" ([math]::Round($free, 2))"GB"
-                     Write-Host 
-                    }
-           } 
+         RDiskScan $recArray "w" $pcname
 
          #Prompt de limpeza
          $op = Read-Host -Prompt "Deseja Fazer a limpeza remota de disco (S/N or Y/N)"  
          if ($op -ne $null -Or "n") #Se não introduzir vazio ou n (N)
          {
-            switch ($yn) #para funcionar um y ou s (pt/en)
-            {
-               "y"{RDiskCleanCmd}
-               "s"{RDiskCleanCmd}
+            switch ($op) #para funcionar um y ou s (pt/en)
+            { 
+               "y" {RDiskClean}
+               "s" {RDiskClean}
             }
          }
-         else {}
+         
    } #Fim de Try
    
    #Exeções
