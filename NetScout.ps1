@@ -1,4 +1,4 @@
-﻿<#   
+<#   
 .SYNOPSIS   
 <Estre script foi criado para encontrar o IPV4, Marca, Modelo , RAM, CPU, Numero de Serie, Utilizador Corrente e Estatísticas de Disco, de uma maquina através do seu nome. 
 Também limpará o disco de ficheiros de lixo caso o utilizador o considere necessário e apresentará o espaço recuperado.>  
@@ -7,7 +7,11 @@ Também limpará o disco de ficheiros de lixo caso o utilizador o considere nece
    O nome do utilizador ligado na altura da verificação.  
    O Nome do Fabricante.  
    O Modelo da Maquina.  
-   O IPV4.
+   O IPv4
+   O IPv6
+   O Enderesso MAC
+   O Gateway
+   O Dispositivo que está a conectar à internet
    O Nome do CPU.
    O Nome do Sistema Operativo.
    O Numero de Serie.
@@ -23,7 +27,7 @@ E apresentará o espaço Recupeado pelo script de limpeza.>
 <Nome do pc que será perguntado pelo script. Este script não tem argumentos>  
 .OUTPUTS
 <Output aparece na consola:   
-   IPv4  
+   IPv4, IPv6, MAC, Gateway, Dispositivo de internet a ser usado  
    Numero de Serie  
    Nome do CPU  
    Nome do Sistema Operativo  
@@ -31,11 +35,11 @@ E apresentará o espaço Recupeado pelo script de limpeza.>
    Modelo  
    Utilizador currente  
    RAM  
-   Tamanho de C e D  
-   Espaço Ocupado e Livre de C e D
+   Tamanho dos discos
+   Espaço Ocupado e Livre dos discos em questão
    Espaço Recuperado após a limpeza caso esta seja escolhida>  
 .NOTES 
-Version: 5  
+Version: 6  
 Author: <João Aelxandre Garica Correia>  
 Creation Date: <07/05/2017>  
 Purpose/Change: Network Scouting and Remote Disk Cleaning 
@@ -45,9 +49,8 @@ Purpose/Change: Network Scouting and Remote Disk Cleaning
 # Header Functions
 ########################################################
 #Scans disk
-#Rquires an empty array ( $recArray = [System.Collections.ArrayList]@() ) to be declared out of the function scope
-#A read or write option "w" = Write && "r" = Read
-#Requires pcname pasthrough
+#Arguments: Empty Array ($var = [System.Collections.ArrayList]@() ), Read/Write to/from array ("r" == read, "w" == write), PcName
+#Output: To screen (needs fix)
 function RDiskScan([System.Collections.ArrayList] $array, [String] $rw, [String] $name)
 {
     $diskscan = Get-WmiObject Win32_logicaldisk -ComputerName $name
@@ -80,13 +83,40 @@ function RDiskScan([System.Collections.ArrayList] $array, [String] $rw, [String]
         }
 }
 
-#disk cleaning script
+#Disk cleaning script
 #Calls psexec and RDiskScan
+#No arguments
 function RDiskClean 
 {  
    #remote call of the cleaning script
    psexec \\$pcname "C:\Windows\System32\CleanPC.cmd"
    RDiskScan $recArray "r" $pcname
+}
+
+#Fetches network device information
+#Argument: Pc Name
+#Outpupt: Array of objects
+#Properties: Description, IPv4, IPv6, MAC(address), Gateway
+function GetNet ([string] $name)
+{
+    $outarray = [System.Collections.ArrayList]@()
+    $eth0 = Get-WmiObject win32_networkadapterconfiguration -ComputerName $name 
+    foreach ($ethobj in $eth0)
+    {
+        if ($ethobj.DHCPEnabled -eq "True"-and $ethobj.IPAddress -ne $null)
+        {
+             $pass = @{
+             Description = $ethobj.Description
+             MAC = $ethobj.MACAddress
+             Gateway = $ethobj.DefaultIPGateway
+             IPv4 = $ethobj.IPAddress[0]
+             IPv6 = Try {$ethobj.IPAddress[1] } catch {return $null}
+             }
+             $TMP = New-Object psobject -Property $pass
+             $outarray.Add($TMP)
+        }
+    }
+    return $outarray
 }
 ########################################################
 # Header Functions End
@@ -100,9 +130,12 @@ While (!$pcname) #se não tiver inserido nome
 $contest = Test-Connection -ComputerName $pcname -count 1 -Quiet #Teste para saber se o pc está ligado
 if ($contest -eq 1 )  # se estiver recolhe o endereço de ip
    {   
-      $iv4 = Test-Connection -ComputerName $pcname -count 1 -ErrorAction Stop| select-object IPV4Address #Recolha do IPv4 de $pcname
-      Write-Host "IPv4: "$iv4.Ipv4address   
-      Write-Host
+      $net = GetNet $pcname 
+      Write-Host "`nNome de placa de rede: "$net.Description
+      Write-Host "IPv4: "$net.IPv4
+      Write-Host "IPv6: "$net.IPv6
+      Write-Host "MAC: "$net.MAC
+      Write-Host "Gateway: "$net.Gateway `n    
    } 
 
 if ($contest -eq 1 ) #se estiver ligado executa o script em si
@@ -110,7 +143,7 @@ if ($contest -eq 1 ) #se estiver ligado executa o script em si
    Try {
          #Recolha de informação geral
          $colItems = Get-wmiobject -ErrorAction Stop -class Win32_ComputerSystem -namespace "root\CIMV2" -computername $pcname #Recolha de uma variadade de informação e deteção de erros com terminação de script caso exeções sejam encontradas
-         $osname = Get-WmiObject -ComputerName $pcname -Class Win32_OperatingSystem | Select-Object caption  #Nome do Sistema Operativo 
+         $osname = Get-WmiObject -ComputerName $pcname -Class Win32_OperatingSystem | Select-Object caption  #Nome do Sistema Operativo
          $cpuname = Get-WmiObject Win32_processor -ComputerName $pcname | Select-Object name #Nome CPU   
          $serial = Get-WmiObject win32_bios -ComputerName $pcname | Select-Object SerialNumber  #numero de serie 
          $displayGB = [math]::round($colItems.TotalPhysicalMemory/1024/1024/1024, 0) #Formatação de RAM para GB
@@ -125,9 +158,8 @@ if ($contest -eq 1 ) #se estiver ligado executa o script em si
          Write-Host "Username: " $colItems.UserName #Nome de utilizador   
          #fim do display de resultados gerais
          
-         Write-Host
-         Write-Host "Procurando discos..." #A recolha de informação de discos pode demorar
-         Write-Host
+         Write-Host "`nProcurando discos...`n" #A recolha de informação de discos pode demorar
+
          $diskspace = Get-WmiObject Win32_logicaldisk -ComputerName $pcname #Recolha de informação de disco
          $recArray = [System.Collections.ArrayList]@() #array para onde salvar $free para poder ser comparado mais tarde
          RDiskScan $recArray "w" $pcname
