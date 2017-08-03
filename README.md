@@ -25,9 +25,9 @@ Set-ExecutionPolicy Restricted
 ```
 
 ### To be done
-* Turn the disk scanning part of the code into a self contained function. (DRY) 
+* Remove printing directly to console from functions and just have them return data (fucntional coding)
 * Convert _CleanPC.cmd_ to Powershell or introduce it into the script itself(depends on _CleanPC.cmd_'s author Nuno Almeida).
 * Have the script not only ping for the computer but have it check if the computer active in the Active Directory (If possible)
 
 ##### Dreams
-* Have this be converted to a C# program with GUI banking on the ability to call Powershell Scripts in C#
+* Have this be converted to a C# program banking on the ability to call Powershell Scripts in C#
