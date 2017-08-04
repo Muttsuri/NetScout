@@ -49,12 +49,13 @@ Purpose/Change: Network Scouting and Remote Disk Cleaning
 # Header Functions
 ########################################################
 #Scans disk
-#Arguments: Empty Array ($var = [System.Collections.ArrayList]@() ), Read/Write to/from array ("r" == read, "w" == write), PcName
+#Arguments: Empty Array ($var = [System.Collections.ArrayList]@() ), PcName
 #Output: To screen (needs fix)
-function RDiskScan([System.Collections.ArrayList] $array, [String] $rw, [String] $name)
+function RDiskScan([System.Collections.ArrayList] $array, [String] $name)
 {
     $diskscan = Get-WmiObject Win32_logicaldisk -ComputerName $name
     $cnt = 0
+    if($array[0] -eq $null) {$rw = "w"} else {$rw = "r"}
         foreach ($diskobj in $diskscan)
         {
             if($diskobj.VolumeName -ne $null ) 
@@ -90,7 +91,7 @@ function RDiskClean
 {  
    #remote call of the cleaning script
    psexec \\$pcname "C:\Windows\System32\CleanPC.cmd"
-   RDiskScan $recArray "r" $pcname
+   RDiskScan $recArray $pcname
 }
 
 #Fetches network device information
@@ -162,7 +163,7 @@ if ($contest -eq 1 ) #se estiver ligado executa o script em si
 
          $diskspace = Get-WmiObject Win32_logicaldisk -ComputerName $pcname #Recolha de informação de disco
          $recArray = [System.Collections.ArrayList]@() #array para onde salvar $free para poder ser comparado mais tarde
-         RDiskScan $recArray "w" $pcname
+         RDiskScan $recArray $pcname
 
          #Prompt de limpeza
          $op = Read-Host -Prompt "Deseja Fazer a limpeza remota de disco (S/N or Y/N)"  
