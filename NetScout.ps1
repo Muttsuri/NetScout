@@ -161,7 +161,6 @@ if ($contest -eq 1 ) #se estiver ligado executa o script em si
          
          Write-Host "`nProcurando discos...`n" #A recolha de informação de discos pode demorar
 
-         $diskspace = Get-WmiObject Win32_logicaldisk -ComputerName $pcname #Recolha de informação de disco
          $recArray = [System.Collections.ArrayList]@() #array para onde salvar $free para poder ser comparado mais tarde
          RDiskScan $recArray $pcname
 
