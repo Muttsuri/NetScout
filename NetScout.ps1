@@ -143,8 +143,8 @@ if ($contest -eq 1 ) #se estiver ligado executa o script em si
 {        
    Try {
          #Recolha de informação geral
-         $colItems = Get-wmiobject -ErrorAction Stop -class Win32_ComputerSystem -namespace "root\CIMV2" -computername $pcname #Recolha de uma variadade de informação e deteção de erros com terminação de script caso exeções sejam encontradas
-         $osname = Get-WmiObject -ComputerName $pcname -Class Win32_OperatingSystem | Select-Object caption  #Nome do Sistema Operativo
+         $colItems = Get-wmiobject Win32_ComputerSystem -computername $pcname -ErrorAction Stop #Recolha de uma variadade de informação e deteção de erros com terminação de script caso exeções sejam encontradas
+         $osname = Get-WmiObject Win32_OperatingSystem -ComputerName $pcname | Select-Object caption  #Nome do Sistema Operativo
          $cpuname = Get-WmiObject Win32_processor -ComputerName $pcname | Select-Object name #Nome CPU   
          $serial = Get-WmiObject win32_bios -ComputerName $pcname | Select-Object SerialNumber  #numero de serie 
          $displayGB = [math]::round($colItems.TotalPhysicalMemory/1024/1024/1024, 0) #Formatação de RAM para GB
