@@ -136,7 +136,7 @@ if ($contest -eq 1 )  # se estiver recolhe o endereço de ip
       Write-Host "IPv4: "$net.IPv4
       Write-Host "IPv6: "$net.IPv6
       Write-Host "MAC: "$net.MAC
-      Write-Host "Gateway: "$net.Gateway `n    
+      Write-Host "Gateway: "$net.Gateway    
    } 
 
 if ($contest -eq 1 ) #se estiver ligado executa o script em si
