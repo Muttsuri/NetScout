@@ -49,51 +49,88 @@ Purpose/Change: Network Scouting and Remote Disk Cleaning
 # Header Functions
 ########################################################
 <#
-Scans disk
-Arguments: Empty Array ($var = [System.Collections.ArrayList]@() ), PcName
-Output: To screen (needs fix)
+Scans Disks
+Arguments: PcName
+Outpupt: Array of objects
+Properties: ID (C:, D: etc.), Name (OS, DATA, etc.), TotalSpace (in GB), FreeSpace (in GB), OcupiedSpace (in GB)
+NOTE: Numbers come in full so they may need to be formated, but that is done outside the function.
 #>
-function RDiskScan([System.Collections.ArrayList] $array, [String] $name)
-{
+function DiskScan ([String] $name) 
+{   
+    # Create dynamic sized array (Array.List more acurally) [since static wouldn't permit Add]
+    $outarray = [System.Collections.ArrayList]@()
+    # Get the information of all drives
     $diskscan = Get-WmiObject Win32_logicaldisk -ComputerName $name
-    $cnt = 0
-    if($array[0] -eq $null) {$rw = "w"} else {$rw = "r"}
         foreach ($diskobj in $diskscan)
         {
-            if($diskobj.DriveType -eq 3) 
+            # I am only interested in disk/data drives (DriveType 3), as such it will catch usb, I'm ok with that
+            if($diskobj.DriveType -eq 3 ) 
             {
-                Write-Host $diskobj.deviceid
-                $max2 = $diskobj.Size/1024/1024/1024
-                $free2 = $diskobj.FreeSpace/1024/1024/1024
-                $full2 = $max2 - $free2
-                if ($rw -eq "w")
-                {
-                    $null = $array.Add($diskobj.FreeSpace)
-                }
-                else
-                {
-                    $dif = $diskobj.FreeSpace - $array[$cnt]
-                }
-                Write-Host "Espaço Total em Disco"$diskobj.deviceid":" ([math]::Round($max2, 2)) "GB"
-                Write-Host "Espaço Ocupado em Disco"$diskobj.deviceid":" ([math]::Round($full2, 2)) "GB"
-                Write-Host "Espaço Livre em Disco"$diskobj.deviceid":" ([math]::Round($free2, 2)) "GB"
-                if ($rw -eq "r")
-                {
-                    Write-Host "Recovered Space" ([math]::round($dif/1024/1024, 3)) "MB"
-                    $cnt++
-                }
-            }
+                $max = $diskobj.Size/1024/1024/1024
+                $free = $diskobj.FreeSpace/1024/1024/1024
+                $full = $max - $free
+                # Formating the processed data in a hashtable and conversion to an object
+                $obj = @{ 
+                    'ID' = $diskobj.deviceid
+                    'Name' = $diskobj.VolumeName
+                    'TotalSpace' = $max
+                    'FreeSpace' = $free
+                    'FullSpace' = $full }
+                $TMP = New-Object psobject -Property $obj
+                # Redirecting the output of the Add method to null, which was beeing added to the functiokn
+                # Said output was the index fo the object being added
+                # Making pipe to Out-Null is genraly slower and I find castint to void ( [void]$outarray ) and redirecting to null ( > $null )
+                $null = $outarray.Add($TMP)
+            } 
         }
+    return $outarray
 }
 
+<#
+Compares two scans of diferent times and retuns the diferences of them
+Arguments: 1st scan, 2nd scan
+Output: Array of onjects
+Properties: ID(C:, D: etc.), The size in MB of the difernece (this reflects gained space)
+NOTE: NOTE: Numbers come in full so they may need to be formated, but that is done outside the function.
+#>
+function CompareDisks ([System.Collections.ArrayList] $scan1, [System.Collections.ArrayList] $scan2)
+{
+    #Filters out uncessary information, could be done with map but powershell doesn't have it
+    function Shape([System.Collections.ArrayList] $scan)
+    {
+        $out = [System.Collections.ArrayList]@()
+        foreach($disk in $scan)
+        {
+            $obj = @{ 
+                'ID' = $disk.ID
+                'FullSpace' = $disk.FullSpace }
+            $TMP = New-Object psobject -Property $obj
+            $null = $out.Add($TMP)
+        }
+        return $out
+    }
+    $scan1 = Shape $disk1 
+    $scan2 = Shape $disk2  
+    $out = [System.Collections.ArrayList]@()
+    for ($cnt = 0; $cnt -lt $before.Count; $cnt++)
+    {
+        $obj = @{ 
+            "ID" = $before[$cnt].ID
+            "Diference" = (($scan1[$cnt].FullSpace - $scan2[$cnt].FullSpace)*1024)
+        }
+        $TMP = New-Object psobject -Property $obj
+        $null = $out.Add($TMP)
+    }
+    return $out
+}
 #Disk cleaning script
 #Calls psexec and RDiskScan
 #No arguments
-function RDiskClean 
+#Need to find a non 3rd party dependent method
+function RDiskClean($target)
 {  
    #remote call of the cleaning script
-   #psexec \\$pcname "C:\Windows\System32\CleanPC.cmd"
-   RDiskScan $recArray $pcname
+   psexec \\$target "C:\Windows\System32\CleanPC.cmd"
 }
 
 #Fetches network device information
@@ -128,78 +165,90 @@ function GetNet ([string] $name)
 #Codigo central ao script
 While (!$pcname) #se não tiver inserido nome
    {      
-      $pcname = Read-Host -Prompt "Insira o nome do pc para obter informção"
+        $pcname = Read-Host -Prompt "Insira o nome do pc para obter informção"
    }   
 $contest = Test-Connection -ComputerName $pcname -count 1 -Quiet #Teste para saber se o pc está ligado
 if ($contest -eq 1 )  # se estiver recolhe o endereço de ip
    {   
-      $net = GetNet $pcname 
-      Write-Host "`nNome de placa de rede: "$net.Description
-      Write-Host "IPv4: "$net.IPv4
-      Write-Host "IPv6: "$net.IPv6
-      Write-Host "MAC: "$net.MAC
-      Write-Host "Gateway: "$net.Gateway  
+        $net = GetNet $pcname 
+        Write-Host "`nNome de placa de rede: "$net.Description
+        Write-Host "IPv4: "$net.IPv4
+        Write-Host "IPv6: "$net.IPv6
+        Write-Host "MAC: "$net.MAC
+        Write-Host "Gateway: "$net.Gateway    
    } 
 
 if ($contest -eq 1 ) #se estiver ligado executa o script em si
 {        
    Try {
-         #Recolha de informação geral
-         $colItems = Get-wmiobject Win32_ComputerSystem -computername $pcname -ErrorAction Stop #Recolha de uma variadade de informação e deteção de erros com terminação de script caso exeções sejam encontradas
-         $osname = Get-WmiObject Win32_OperatingSystem -ComputerName $pcname | Select-Object caption  #Nome do Sistema Operativo
-         $cpuname = Get-WmiObject Win32_processor -ComputerName $pcname | Select-Object name #Nome CPU   
-         $serial = Get-WmiObject win32_bios -ComputerName $pcname | Select-Object SerialNumber  #numero de serie 
-         $displayGB = [math]::round($colItems.TotalPhysicalMemory/1024/1024/1024, 0) #Formatação de RAM para GB
-         
-         #Inicio de display de resultados gerais 
-         Write-Host "Fabricante: " $colItems.Manufacturer #Nome de Fabricante     
-         write-host "Modelo: " $colItems.Model #Nome de Modelo 
-         Write-Host "Numero de Serie:" $serial.SerialNumber    
-         Write-Host "CPU: " $cpuname.name  #Nome do CPU output
-         write-host "RAM: " $displayGB "GB"  #RAM em GB output
-         Write-Host "OS: " $osname.caption #Sistema Operativo output
-         Write-Host "Username: " $colItems.UserName #Nome de utilizador   
-         #fim do display de resultados gerais
-         
-         Write-Host "`nProcurando discos...`n" #A recolha de informação de discos pode demorar
+            #Recolha de informação geral
+            $colItems = Get-wmiobject Win32_ComputerSystem -computername $pcname -ErrorAction Stop #Recolha de uma variadade de informação e deteção de erros com terminação de script caso exeções sejam encontradas
+            $osname = Get-WmiObject Win32_OperatingSystem -ComputerName $pcname | Select-Object caption  #Nome do Sistema Operativo
+            $cpuname = Get-WmiObject Win32_processor -ComputerName $pcname | Select-Object name #Nome CPU   
+            $serial = Get-WmiObject win32_bios -ComputerName $pcname | Select-Object SerialNumber  #numero de serie 
+            $displayGB = [math]::round($colItems.TotalPhysicalMemory/1024/1024/1024, 0) #Formatação de RAM para GB
+            
+            #Inicio de display de resultados gerais 
+            Write-Host "Fabricante: " $colItems.Manufacturer #Nome de Fabricante     
+            write-host "Modelo: " $colItems.Model #Nome de Modelo 
+            Write-Host "Numero de Serie:" $serial.SerialNumber    
+            Write-Host "CPU: " $cpuname.name  #Nome do CPU output
+            write-host "RAM: " $displayGB "GB"  #RAM em GB output
+            Write-Host "OS: " $osname.caption #Sistema Operativo output
+            Write-Host "Username: " $colItems.UserName #Nome de utilizador   
+            #fim do display de resultados gerais
+            
+            Write-Host "`nProcurando discos...`n" #A recolha de informação de discos pode demorar
 
-         $recArray = [System.Collections.ArrayList]@() #array para onde salvar $free para poder ser comparado mais tarde
-         RDiskScan $recArray $pcname
-
-         #Prompt de limpeza
-         $op = Read-Host -Prompt "Deseja Fazer a limpeza remota de disco (S/N or Y/N)"  
-         if ($op -ne $null -Or "n") #Se não introduzir vazio ou n (N)
-         {
-            switch ($op) #para funcionar um y ou s (pt/en)
-            { 
-               "y" {RDiskClean}
-               "s" {RDiskClean}
+            $before = DiskScan $pcname
+            # Parsing the object array
+            foreach ($disk in $before) 
+            {
+                Write-Host "Disco: " $disk.ID
+                Write-Host "Espaço Total: " ([math]::Round($disk.TotalSpace, 2)) "GB"
+                Write-Host "Espaço Ocupado: " ([math]::Round($disk.FullSpace, 2)) "GB"
+                Write-Host "Espaço Livre"  ([math]::Round($disk.FreeSpace, 2)) "GB" `n
             }
-         }
-         
-   } #Fim de Try
-   
-   #Exeções
-   catch [System.Runtime.InteropServices.COMException] { Write-Host "Servidor RPC não disponivel" }
-   catch [System.Net.NetworkInformation.PingException] { Write-Host "Servidor RPC não disponivel" }
-   Catch [System.UnauthorizedAccessException] { Write-Host "Acesso Negado à recolha de informação do PC"}   
-   #limpeza de variaveis
-   Finally 
-      { 
-         try 
-            { 
-               Remove-Variable -ErrorAction Stop pcname , colItems , osname , cpuname , serial , diskspace, recArray, yn
-            } #Limpeza de variavéis (imperativo a limpesa de $pcname, pois o script verifica no inicio se a variavel é nula, não apagar a variavel fará o resto dos script executar com a introdução prévia)
-         catch [System.Management.Automation.ItemNotFoundException] {} #para caso a variavel não esteja iniciada ele não quebre o script
-        }
+            #Prompt de limpeza
+            $op = Read-Host -Prompt "Deseja Fazer a limpeza remota de disco (S/N or Y/N)"  
+            if ( ($op -eq "y") -or ($op -eq "s"))<#($op -ne $null) -And ($op -ne "n") -And ($op -ne "")#> #Se não introduzir vazio ou n (N)
+            {
+                RDiskClean $pcname #Clean Disks
+                $after = DiskScan $pcname #Post cleaning scan
+                $comparison = CompareDisks $scan1 $scan2 #Comparting scans
+                # Seeing how much space has been recovered
+                foreach ($disk in $comparison)
+                {
+                    Write-host "ID: " $disk.ID
+                    Write-Host "Diference = " ([math]::Round($disk.Diference, 2)) "MB" `n
+                }
+            }
+            
+            
+        } #Fim de Try
+
+    #Exeções
+    catch [System.Runtime.InteropServices.COMException] { Write-Host "Servidor RPC não disponivel" }
+    catch [System.Net.NetworkInformation.PingException] { Write-Host "Servidor RPC não disponivel" }
+    Catch [System.UnauthorizedAccessException] { Write-Host "Acesso Negado à recolha de informação do PC"}   
+    #limpeza de variaveis
+    Finally 
+    { 
+        try 
+        { 
+            Remove-Variable -ErrorAction Stop pcname , colItems , osname , cpuname , serial , before, after,comparison, yn
+        } 
+        #Limpeza de variavéis (imperativo a limpesa de $pcname, pois o script verifica no inicio se a variavel é nula, não apagar a variavel fará o resto dos script executar com a introdução prévia)
+        catch [System.Management.Automation.ItemNotFoundException] {} #para caso a variavel não esteja iniciada ele não quebre o script
+    }
 } #Fim de If
 Else #Caso o pc não esteja ligado
-   { 
-      Write-Host "Computador desligado ou não existente"
-      try 
-         { 
+{ 
+    Write-Host "Computador desligado ou não existente"
+    try
+        { 
             Remove-Variable -ErrorAction Stop pcname , contest
-         }
-      catch [System.Management.Automation.ItemNotFoundException] {} 
-      }
+        }
+    catch [System.Management.Automation.ItemNotFoundException] {} 
+}
 #Fim
