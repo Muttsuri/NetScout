@@ -48,9 +48,11 @@ Purpose/Change: Network Scouting and Remote Disk Cleaning
 ########################################################
 # Header Functions
 ########################################################
-#Scans disk
-#Arguments: Empty Array ($var = [System.Collections.ArrayList]@() ), PcName
-#Output: To screen (needs fix)
+<#
+Scans disk
+Arguments: Empty Array ($var = [System.Collections.ArrayList]@() ), PcName
+Output: To screen (needs fix)
+#>
 function RDiskScan([System.Collections.ArrayList] $array, [String] $name)
 {
     $diskscan = Get-WmiObject Win32_logicaldisk -ComputerName $name
@@ -58,7 +60,7 @@ function RDiskScan([System.Collections.ArrayList] $array, [String] $name)
     if($array[0] -eq $null) {$rw = "w"} else {$rw = "r"}
         foreach ($diskobj in $diskscan)
         {
-            if($diskobj.VolumeName -ne $null ) 
+            if($diskobj.DriveType -eq 3) 
             {
                 Write-Host $diskobj.deviceid
                 $max2 = $diskobj.Size/1024/1024/1024
@@ -66,7 +68,7 @@ function RDiskScan([System.Collections.ArrayList] $array, [String] $name)
                 $full2 = $max2 - $free2
                 if ($rw -eq "w")
                 {
-                    $array.Add($diskobj.FreeSpace)
+                    $null = $array.Add($diskobj.FreeSpace)
                 }
                 else
                 {
@@ -90,7 +92,7 @@ function RDiskScan([System.Collections.ArrayList] $array, [String] $name)
 function RDiskClean 
 {  
    #remote call of the cleaning script
-   psexec \\$pcname "C:\Windows\System32\CleanPC.cmd"
+   #psexec \\$pcname "C:\Windows\System32\CleanPC.cmd"
    RDiskScan $recArray $pcname
 }
 
@@ -100,7 +102,7 @@ function RDiskClean
 #Properties: Description, IPv4, IPv6, MAC(address), Gateway
 function GetNet ([string] $name)
 {
-    $outarray = [System.Collections.ArrayList]@()
+    # $outarray = [System.Collections.ArrayList]@() -> outarray is not necessary, remove declaration
     $eth0 = Get-WmiObject win32_networkadapterconfiguration -ComputerName $name 
     foreach ($ethobj in $eth0)
     {
@@ -113,11 +115,11 @@ function GetNet ([string] $name)
              IPv4 = $ethobj.IPAddress[0]
              IPv6 = Try {$ethobj.IPAddress[1] } catch {return $null}
              }
-             $TMP = New-Object psobject -Property $pass
-             $outarray.Add($TMP)
+             $out = New-Object psobject -Property $pass
+             # $outarray.Add($out) - > Unessesary, there is one object out of the $eth0 array worth getting.
         }
     }
-    return $outarray
+    return $out # old name: $outarray
 }
 ########################################################
 # Header Functions End
@@ -136,7 +138,7 @@ if ($contest -eq 1 )  # se estiver recolhe o endereço de ip
       Write-Host "IPv4: "$net.IPv4
       Write-Host "IPv6: "$net.IPv6
       Write-Host "MAC: "$net.MAC
-      Write-Host "Gateway: "$net.Gateway    
+      Write-Host "Gateway: "$net.Gateway  
    } 
 
 if ($contest -eq 1 ) #se estiver ligado executa o script em si
