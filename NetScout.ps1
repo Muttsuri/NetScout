@@ -202,7 +202,7 @@ if ($contest -eq 1 ) #se estiver ligado executa o script em si
 
             $before = DiskScan $pcname
             # Parsing the object array
-            foreach ($disk in $before) 
+            foreach ($disk in $before)
             {
                 Write-Host "Disco: " $disk.ID
                 Write-Host "Espaço Total: " ([math]::Round($disk.TotalSpace, 2)) "GB"
@@ -211,11 +211,11 @@ if ($contest -eq 1 ) #se estiver ligado executa o script em si
             }
             #Prompt de limpeza
             $op = Read-Host -Prompt "Deseja Fazer a limpeza remota de disco (S/N or Y/N)"  
-            if ( ($op -eq "y") -or ($op -eq "s"))<#($op -ne $null) -And ($op -ne "n") -And ($op -ne "")#> #Se não introduzir vazio ou n (N)
+            if ( ($op -eq "y") -or ($op -eq "s")) #Only if asked it cleans and scans the disk
             {
                 RDiskClean $pcname #Clean Disks
                 $after = DiskScan $pcname #Post cleaning scan
-                $comparison = CompareDisks $scan1 $scan2 #Comparting scans
+                $comparison = CompareDisks $before $after #Comparting scans
                 # Seeing how much space has been recovered
                 foreach ($disk in $comparison)
                 {
@@ -236,7 +236,7 @@ if ($contest -eq 1 ) #se estiver ligado executa o script em si
     { 
         try 
         { 
-            Remove-Variable -ErrorAction Stop pcname , colItems , osname , cpuname , serial , before, after,comparison, yn
+            Remove-Variable -ErrorAction Stop pcname , colItems , osname , cpuname , serial , before, after, comparison, yn
         } 
         #Limpeza de variavéis (imperativo a limpesa de $pcname, pois o script verifica no inicio se a variavel é nula, não apagar a variavel fará o resto dos script executar com a introdução prévia)
         catch [System.Management.Automation.ItemNotFoundException] {} #para caso a variavel não esteja iniciada ele não quebre o script
