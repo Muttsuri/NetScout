@@ -39,7 +39,7 @@ E apresentará o espaço Recupeado pelo script de limpeza.>
    Espaço Ocupado e Livre dos discos em questão
    Espaço Recuperado após a limpeza caso esta seja escolhida>  
 .NOTES 
-Version: 6  
+Version: 7  
 Author: <João Aelxandre Garica Correia>  
 Creation Date: <07/05/2017>  
 Purpose/Change: Network Scouting and Remote Disk Cleaning 
@@ -51,47 +51,46 @@ Purpose/Change: Network Scouting and Remote Disk Cleaning
 <#
 Scans Disks
 Arguments: PcName
-Outpupt: Array of objects
-Properties: ID (C:, D: etc.), Name (OS, DATA, etc.), TotalSpace (in GB), FreeSpace (in GB), OcupiedSpace (in GB)
+Outpupt: Array of Hashtables
+Keys: ID (C:, D: etc.), Name (OS, DATA, etc.), TotalSpace (in GB), FreeSpace (in GB), OcupiedSpace (in GB)
 NOTE: Numbers come in full so they may need to be formated, but that is done outside the function.
 #>
 function DiskScan ([String] $name) 
 {   
     # Create dynamic sized array (Array.List more acurally) [since static wouldn't permit Add()]
-    $outarray = [System.Collections.ArrayList]@()
+    $out = [System.Collections.ArrayList]@()
     # Get the information of all drives
-    $diskscan = Get-WmiObject Win32_logicaldisk -ComputerName $name
-        foreach ($diskobj in $diskscan)
+    $disklist = Get-WmiObject Win32_logicaldisk -ComputerName $name
+        foreach ($disk in $disklist)
         {
+            
             # I am only interested in disk/data drives (DriveType 3), as such it will catch usb, I'm ok with that
-            if($diskobj.DriveType -eq 3 ) 
+            if($disk.DriveType -eq 3 ) 
             {
-                $max = $diskobj.Size/1024/1024/1024
-                $free = $diskobj.FreeSpace/1024/1024/1024
+                $max = $disk.Size/1024/1024/1024
+                $free = $disk.FreeSpace/1024/1024/1024
                 $full = $max - $free
-                # Formating the processed data in a hashtable and conversion to an object
+                # Formating the processed data in a hashtable
                 $obj = @{ 
-                        ID = $diskobj.deviceid
-                        Name = $diskobj.VolumeName
+                        ID = $disk.deviceid
+                        Name = $disk.VolumeName
                         TotalSpace = $max
                         FreeSpace = $free
                         FullSpace = $full }
-                $TMP = New-Object psobject -Property $obj
-                # Redirecting the output of the Add method to null, which was beeing added to the functiokn
-                # Said output was the index fo the object being added
-                # Making pipe to Out-Null is genraly slower and I find castint to void ( [void]$outarray ) and redirecting to null ( > $null )
-                $null = $outarray.Add($TMP)
+                
+                # Redirecting array index output of Array.Add() to Null (aka, ignoring it), it still adds the entry to the list        
+                $null = $out.Add($obj)
             } 
         }
-    return $outarray
+    return $out
 }
 
 <#
 Compares two scans of diferent times and retuns the diferences of them
 Arguments: 1st scan, 2nd scan
-Output: Array of onjects
-Properties: ID(C:, D: etc.), The size in MB of the difernece (this reflects gained space)
-NOTE: NOTE: Numbers come in full so they may need to be formated, but that is done outside the function.
+Output: Array of Hashtables
+Keys: ID(C:, D: etc.), The size in MB of the difernece (this reflects gained space)
+NOTE: Numbers come in full so they may need to be formated, but that is done outside the function.
 #>
 function CompareDisks ([System.Collections.ArrayList] $scan1, [System.Collections.ArrayList] $scan2)
 {
@@ -104,11 +103,12 @@ function CompareDisks ([System.Collections.ArrayList] $scan1, [System.Collection
             $obj = @{ 
                     ID = $disk.ID
                     FullSpace = $disk.FullSpace }
-            $TMP = New-Object psobject -Property $obj
-            $null = $out.Add($TMP)
+
+            $null = $out.Add($obj)
         }
         return $out
     }
+
     $scan1 = Shape $disk1 
     $scan2 = Shape $disk2  
     $out = [System.Collections.ArrayList]@()
@@ -117,14 +117,13 @@ function CompareDisks ([System.Collections.ArrayList] $scan1, [System.Collection
         $obj = @{ 
                 ID = $before[$cnt].ID
                 Diference = (($scan1[$cnt].FullSpace - $scan2[$cnt].FullSpace)*1024) }
-        $TMP = New-Object psobject -Property $obj
-        $null = $out.Add($TMP)
+        $null = $out.Add($obj)
     }
     return $out
 }
 <#
 Disk cleaning script
-Calls psexec and RDiskScan
+Calls psexec
 No arguments
 Need to find a non 3rd party dependent method
 #>
@@ -137,8 +136,8 @@ function RDiskClean($target)
 <#
 Fetches network device information
 Argument: Pc Name
-Outpupt: Array of objects
-Properties: Description, IPv4, IPv6, MAC(address), Gateway
+Outpupt: A Hashtable
+Keys: Description, IPv4, IPv6, MAC(address), Gateway
 #>
 function GetNet ([string] $name)
 {
@@ -148,19 +147,28 @@ function GetNet ([string] $name)
     {
         if ($ethobj.DHCPEnabled -eq "True"-and $ethobj.IPAddress -ne $null)
         {
-            $pass = @{
+            return @{
                     Description = $ethobj.Description
                     MAC = $ethobj.MACAddress
                     Gateway = $ethobj.DefaultIPGateway
                     IPv4 = $ethobj.IPAddress[0]
                     IPv6 = Try {$ethobj.IPAddress[1] } catch {return $null} }
-            $out = New-Object psobject -Property $pass
-            # $outarray.Add($out) - > Unessesary, there is one object out of the $eth0 array worth getting.
         }
     }
-    # Old name: $outarray
-    return $out 
 }
+
+function GetUser([String] $name)
+{
+    $UserAccountsList = Get-WmiObject Win32_UserAccount
+    foreach ($user in $UserAccountsList)
+    {
+        if ($user.FullName -ne "")
+        {
+            return $user.name
+        }
+    }
+}
+
 ########################################################
 # Header Functions End
 ########################################################
@@ -186,24 +194,25 @@ if ($contest -eq 1 ) # Se estiver ligado executa o script em si
 {        
    Try 
    {
+        Write-Host "`nProcurando Informação...`n"  # A recolha de tanta informação demora
+
         # Recolha de informação geral
-        $colItems = Get-wmiobject Win32_ComputerSystem -computername $pcname -ErrorAction Stop          #Recolha de uma variadade de informação e deteção de erros com terminação de script caso exeções sejam encontradas
+        $colItems = Get-Wmiobject Win32_ComputerSystem -computername $pcname -ErrorAction Stop          #Recolha de uma variadade de informação e deteção de erros com terminação de script caso exeções sejam encontradas
         $osname = Get-WmiObject Win32_OperatingSystem -ComputerName $pcname | Select-Object caption     # Nome do Sistema Operativo
         $cpuname = Get-WmiObject Win32_processor -ComputerName $pcname | Select-Object name             # Nome CPU   
         $serial = Get-WmiObject win32_bios -ComputerName $pcname | Select-Object SerialNumber           # Numero de serie 
         $displayGB = [math]::round($colItems.TotalPhysicalMemory/1024/1024/1024, 0)                     #Formatação de RAM para GB
-        
+        $username = GetUser $pcname
+
         # Inicio de display de resultados gerais 
         Write-Host "Fabricante: " $colItems.Manufacturer   # Nome de Fabricante     
         write-host "Modelo: " $colItems.Model              # Nome de Modelo 
-        Write-Host "Numero de Serie:" $serial.SerialNumber # Numero de Serie  
+        Write-Host "Numero de Serie:" $serianl.SerialNumber # Numero de Serie  
         Write-Host "CPU: " $cpuname.name                   # Nome do CPU output
         write-host "RAM: " $displayGB "GB"                 # RAM em GB output
         Write-Host "OS: " $osname.caption                  # Sistema Operativo output
-        Write-Host "Username: " $colItems.UserName         # Nome de utilizador   
+        Write-Host "Username: " $username                  # Nome de utilizador   
         # Fim do display de resultados gerais
-        
-        Write-Host "`nProcurando discos...`n"              #A recolha de informação de discos pode demorar
 
         $before = DiskScan $pcname
         # Parsing the object array
