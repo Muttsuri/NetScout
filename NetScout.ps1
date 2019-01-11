@@ -145,7 +145,7 @@ function GetNet ([string] $name)
     $eth0 = Get-WmiObject win32_networkadapterconfiguration -ComputerName $name 
     foreach ($ethobj in $eth0)
     {
-        if ($ethobj.DHCPEnabled -eq "True"-and $ethobj.IPAddress -ne $null)
+        if ($ethobj.DHCPEnabled -eq "True"-and $null -ne $ethobj.IPAddress -and $null -ne $ethobj.DNSDomain)
         {
             return @{
                     Description = $ethobj.Description
@@ -207,7 +207,7 @@ if ($contest -eq 1 ) # Se estiver ligado executa o script em si
         # Inicio de display de resultados gerais 
         Write-Host "Fabricante: " $colItems.Manufacturer   # Nome de Fabricante     
         write-host "Modelo: " $colItems.Model              # Nome de Modelo 
-        Write-Host "Numero de Serie:" $serianl.SerialNumber # Numero de Serie  
+        Write-Host "Numero de Serie:" $serial.SerialNumber # Numero de Serie  
         Write-Host "CPU: " $cpuname.name                   # Nome do CPU output
         write-host "RAM: " $displayGB "GB"                 # RAM em GB output
         Write-Host "OS: " $osname.caption                  # Sistema Operativo output
