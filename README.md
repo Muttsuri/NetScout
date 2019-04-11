@@ -23,10 +23,14 @@ It can be set back with:
 ```powershell
 Set-ExecutionPolicy Restricted
 ```
+### Linux
+This script will not be able to work in the time being, this is due to the fact that linux has no implementation of the CMI structure, but Microsoft is working on using the OMI to implement Commands like `Get-CmiInstance`
 
 ### To be done
+* Convert the WMI dependent commands to a CMI implementation.
 * Convert _CleanPC.cmd_ to Powershell or introduce it into the script itself(depends on _CleanPC.cmd_'s author Nuno Almeida).
 * Have the script not only ping for the computer but have it check if the computer active in the Active Directory (If possible)
 
 ##### Dreams
 * Have this be converted to a C# program banking on the ability to call Powershell Scripts in C#
+
