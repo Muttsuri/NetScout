@@ -92,7 +92,7 @@ Output: Array of Hashtables
 Keys: ID(C:, D: etc.), The size in MB of the difernece (this reflects gained space)
 NOTE: Numbers come in full so they may need to be formated, but that is done outside the function.
 #>
-function CompareDisks ([System.Collections.ArrayList] $scan1, [System.Collections.ArrayList] $scan2)
+function CompareDisks ([System.Collections.ArrayList] $before, [System.Collections.ArrayList] $after)
 {
     # Filters out uncessary information, could be done with map but powershell doesn't have it
     function Shape([System.Collections.ArrayList] $scan)
@@ -109,8 +109,8 @@ function CompareDisks ([System.Collections.ArrayList] $scan1, [System.Collection
         return $out
     }
 
-    $scan1 = Shape $disk1 
-    $scan2 = Shape $disk2  
+    $scan1 = Shape $before 
+    $scan2 = Shape $after 
     $out = [System.Collections.ArrayList]@()
     for ($cnt = 0; $cnt -lt $before.Count; $cnt++)
     {
