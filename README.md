@@ -17,7 +17,7 @@ The script retrieves information about the pc these are:
 #### Notes
 Like any PowerShell script, it does require **ExecutionPolicy** to be set to **Unrestricted** with the command:
 ```powershell
-Set-ExecutionPolicy Unrestriced
+Set-ExecutionPolicy Unrestricted
 ```
 It can be set back with:
 ```powershell
